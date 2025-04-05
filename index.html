@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Draggable & Resizable Card</title>
+  <style>
+    .card {
+      position: absolute;
+      top: 100px;
+      left: 100px;
+      width: 300px;
+      height: 200px;
+      background-color: #fefefe;
+      border: 2px solid #444;
+      border-radius: 8px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+      overflow: auto;
+    }
+
+    .header {
+      background-color: #444;
+      color: white;
+      padding: 10px;
+      border-radius: 8px 8px 0 0;
+      cursor: move;
+      user-select: none;
+      touch-action: none;
+    }
+
+    .content {
+      padding: 10px;
+    }
+
+    .resize-handle {
+      position: absolute;
+      width: 20px;
+      height: 20px;
+      right: 0;
+      bottom: 0;
+      background: transparent;
+      z-index: 10;
+      touch-action: none;
+    }
+  </style>
+</head>
+<body>
+
+<div class="card" id="card">
+  <div class="header" id="header">Card Title</div>
+  <div class="content">
+    This is a draggable and resizable card.<br>You can move or resize it on both desktop and mobile.
+  </div>
+  <div class="resize-handle" id="resizeHandle"></div>
+</div>
+
+<script>
+  const card = document.getElementById('card');
+  const header = document.getElementById('header');
+  const handle = document.getElementById('resizeHandle');
+  const storageKey = 'draggable-card-state';
+
+  let startX, startY, offsetX, offsetY, resizing = false;
+
+  function getX(e) {
+    return e.touches ? e.touches[0].clientX : e.clientX;
+  }
+
+  function getY(e) {
+    return e.touches ? e.touches[0].clientY : e.clientY;
+  }
+
+  function onDragStart(e) {
+    e.preventDefault();
+    startX = getX(e);
+    startY = getY(e);
+    offsetX = card.offsetLeft;
+    offsetY = card.offsetTop;
+
+    const moveEvent = e.type === 'touchstart' ? 'touchmove' : 'mousemove';
+    const upEvent = e.type === 'touchstart' ? 'touchend' : 'mouseup';
+
+    document.addEventListener(moveEvent, onDragMove);
+    document.addEventListener(upEvent, onDragEnd);
+  }
+
+  function onDragMove(e) {
+    const dx = getX(e) - startX;
+    const dy = getY(e) - startY;
+    card.style.left = offsetX + dx + 'px';
+    card.style.top = offsetY + dy + 'px';
+  }
+
+  function onDragEnd(e) {
+    document.removeEventListener('mousemove', onDragMove);
+    document.removeEventListener('mouseup', onDragEnd);
+    document.removeEventListener('touchmove', onDragMove);
+    document.removeEventListener('touchend', onDragEnd);
+    saveCardState();
+  }
+
+  function onResizeStart(e) {
+    e.preventDefault();
+    resizing = true;
+    startX = e.touches[0].clientX;
+    startY = e.touches[0].clientY;
+
+    document.addEventListener('touchmove', onResizeMove);
+    document.addEventListener('touchend', onResizeEnd);
+  }
+
+  function onResizeMove(e) {
+    if (!resizing) return;
+    const dx = e.touches[0].clientX - startX;
+    const dy = e.touches[0].clientY - startY;
+    card.style.width = card.offsetWidth + dx + 'px';
+    card.style.height = card.offsetHeight + dy + 'px';
+    startX = e.touches[0].clientX;
+    startY = e.touches[0].clientY;
+  }
+
+  function onResizeEnd() {
+    resizing = false;
+    document.removeEventListener('touchmove', onResizeMove);
+    document.removeEventListener('touchend', onResizeEnd);
+    saveCardState();
+  }
+
+  function saveCardState() {
+    const rect = card.getBoundingClientRect();
+    const state = {
+      top: rect.top,
+      left: rect.left,
+      width: rect.width,
+      height: rect.height
+    };
+    localStorage.setItem(storageKey, JSON.stringify(state));
+  }
+
+  function loadCardState() {
+    const saved = localStorage.getItem(storageKey);
+    if (saved) {
+      const { top, left, width, height } = JSON.parse(saved);
+      card.style.top = top + 'px';
+      card.style.left = left + 'px';
+      card.style.width = width + 'px';
+      card.style.height = height + 'px';
+    }
+  }
+
+  // Initialize
+  header.addEventListener('mousedown', onDragStart);
+  header.addEventListener('touchstart', onDragStart, { passive: false });
+  handle.addEventListener('touchstart', onResizeStart, { passive: false });
+
+  window.addEventListener('load', loadCardState);
+</script>
+
+</body>
+</html>
